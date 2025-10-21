@@ -16,6 +16,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'accounts',
     'admin_panel',
     'announcements',
@@ -23,6 +24,15 @@ INSTALLED_APPS = [
     'resources',
     'students',
 ]
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+
+AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
