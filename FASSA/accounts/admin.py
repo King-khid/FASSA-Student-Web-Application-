@@ -5,12 +5,15 @@ from .models import User
 
 
 class UserCreationForm(forms.ModelForm):
+    """
+    Form for creating new users. Includes repeated password.
+    """
     password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
     password2 = forms.CharField(label="Confirm Password", widget=forms.PasswordInput)
 
     class Meta:
         model = User
-        fields = ('email', 'first_name', 'last_name', 'role')
+        fields = ('email', 'full_name', 'role')  # Use full_name instead of first_name/last_name
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1")
@@ -28,9 +31,12 @@ class UserCreationForm(forms.ModelForm):
 
 
 class UserChangeForm(forms.ModelForm):
+    """
+    Form for updating users.
+    """
     class Meta:
         model = User
-        fields = ('email', 'first_name', 'last_name', 'role', 'is_active', 'is_staff', 'is_superuser')
+        fields = ('email', 'full_name', 'role', 'is_active', 'is_staff', 'is_superuser')
 
 
 @admin.register(User)
@@ -39,22 +45,24 @@ class UserAdmin(BaseUserAdmin):
     form = UserChangeForm
     model = User
 
-    list_display = ('email', 'first_name', 'last_name', 'role', 'is_active', 'is_staff')
+    list_display = ('email', 'full_name', 'role', 'is_active', 'is_staff')
     list_filter = ('role', 'is_active', 'is_staff')
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name')}),
-        ('Permissions', {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Personal info', {'fields': ('full_name',)}),  # replaced first_name/last_name
+        ('Permissions', {
+            'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
+        }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
 
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'first_name', 'last_name', 'role', 'password1', 'password2', 'is_active', 'is_staff'),
+            'fields': ('email', 'full_name', 'role', 'password1', 'password2', 'is_active', 'is_staff'),
         }),
     )
 
-    search_fields = ('email', 'first_name', 'last_name')
+    search_fields = ('email', 'full_name')  # replaced first_name/last_name
     ordering = ('email',)
