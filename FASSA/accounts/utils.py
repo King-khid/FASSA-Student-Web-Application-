@@ -68,4 +68,4 @@ Regards,
 FASSA
 """
     from_email = f"FASSA <{settings.EMAIL_HOST_USER}>"
-    send_mail(subject, message, from_email, [user_email], fail_silently=False)
+    send_mail(subject, message, from_email, [email], fail_silently=False)
