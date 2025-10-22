@@ -1,14 +1,14 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, filters, permissions
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import PermissionDenied
 from .models import PasswordReset
 from .serializers import PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-
-
+from .serializers import StudentManagementSerializer
 from .serializers import (
     StudentRegistrationSerializer,
     SuperAdminUserSerializer,
@@ -17,6 +17,7 @@ from .serializers import (
 )
 from .permissions import IsSuperAdmin
 from .utils import send_password_reset_email
+
 
 User = get_user_model()
 
@@ -42,8 +43,28 @@ class VerifyStudentAccountView(APIView):
 
 class SuperAdminUserView(generics.ListCreateAPIView):
     serializer_class = SuperAdminUserSerializer
-    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    permission_classes = [IsAuthenticated]
     queryset = User.objects.all()
+
+    def perform_create(self, serializer):
+        current_user = self.request.user
+        role = serializer.validated_data.get("role")
+
+        # Allow Super Admin to create any user
+        if current_user.role == "SUPERADMIN":
+            serializer.save()
+            return
+
+        # Allow Admin but restrict to creating Students only
+        elif current_user.role == "ADMIN":
+            if role != "STUDENT":
+                raise PermissionDenied("Admins can only create student accounts.")
+            serializer.save()
+            return
+
+        # Deny Students from creating any account
+        else:
+            raise PermissionDenied("You do not have permission to create accounts.")
 
 
 class LoginView(APIView):
@@ -118,3 +139,65 @@ class PasswordResetConfirmView(generics.GenericAPIView):
         reset_obj.delete()
 
         return Response({"detail": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+
+
+class IsAdminUser(permissions.BasePermission):
+    """Custom permission: Only admins or super admins can access."""
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role in ['ADMIN', 'SUPERADMIN']
+
+class StudentListView(generics.ListAPIView):
+    """List all students or filter/search"""
+    serializer_class = StudentManagementSerializer
+    permission_classes = [IsAdminUser]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['full_name', 'email', 'index_number']
+
+    def get_queryset(self):
+        return User.objects.filter(role='STUDENT')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        count = queryset.count()
+        return Response({
+            "count": count,
+            "students": serializer.data
+        })
+
+
+class StudentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update or delete a student"""
+    serializer_class = StudentManagementSerializer
+    permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        return User.objects.filter(role='STUDENT')
+
+class AdminListView(generics.ListAPIView):
+    """List all admins or filter/search"""
+    serializer_class = SuperAdminUserSerializer
+    permission_classes = [IsSuperAdmin]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['full_name', 'email', 'position']
+
+    def get_queryset(self):
+        return User.objects.filter(role='ADMIN')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        count = queryset.count()
+        return Response({
+            "count": count,
+            "admins": serializer.data
+        })
+
+
+class AdminDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update or delete an admin"""
+    serializer_class = SuperAdminUserSerializer
+    permission_classes = [IsSuperAdmin]
+
+    def get_queryset(self):
+        return User.objects.filter(role='ADMIN')

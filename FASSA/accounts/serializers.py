@@ -10,9 +10,6 @@ from .utils import (
 User = get_user_model()
 
 
-# -----------------------------
-# STUDENT REGISTRATION
-# -----------------------------
 class StudentRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password]
@@ -37,7 +34,6 @@ class StudentRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('confirm_password')
 
-        # Create inactive student until email verification
         user = User.objects.create_user(
             email=validated_data['email'],
             full_name=validated_data['full_name'],
@@ -57,9 +53,6 @@ class StudentRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
-# -----------------------------
-# SUPER ADMIN CREATES USERS
-# -----------------------------
 class SuperAdminUserSerializer(serializers.ModelSerializer):
     index_number = serializers.CharField(required=False, allow_blank=True)
     position = serializers.CharField(required=False, allow_blank=True)
@@ -74,7 +67,6 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
         index_number = attrs.get('index_number')
         position = attrs.get('position')
 
-        # Student validation
         if role == 'STUDENT':
             if not index_number:
                 raise serializers.ValidationError(
@@ -89,7 +81,6 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
                     {"position": "Students should not have a position field."}
                 )
 
-        # Admin validation
         elif role == 'ADMIN':
             if not position:
                 raise serializers.ValidationError(
@@ -115,7 +106,6 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
             password=temp_password,
         )
 
-        # Send email to new user
         send_account_email(
             user_email=user.email,
             full_name=user.full_name,
@@ -126,26 +116,17 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
         return user
 
 
-# -----------------------------
-# LOGIN
-# -----------------------------
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
 
-# -----------------------------
-# USER PROFILE
-# -----------------------------
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'full_name', 'email', 'role', 'index_number', 'position', 'is_active']
 
 
-# -----------------------------
-# PASSWORD RESET
-# -----------------------------
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -159,3 +140,9 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Passwords do not match."})
         return attrs
+
+#Admin/super admin managing student account
+class StudentManagementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'full_name', 'email', 'index_number', 'is_active']
