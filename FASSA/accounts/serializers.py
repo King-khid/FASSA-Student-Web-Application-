@@ -1,67 +1,73 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from rest_framework.exceptions import ValidationError
+from .utils import generate_temporary_password, send_account_email
+from .utils import send_student_verification_email
+from .models import PasswordReset
+
+
 
 User = get_user_model()
 
 
 class StudentRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    confirm_password = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        validators=[validate_password]
+    )
+    confirm_password = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password', 'confirm_password']
+        fields = ['full_name', 'email', 'password', 'confirm_password']
 
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:
             raise serializers.ValidationError({"password": "Passwords do not match."})
-        return attrs
-
-    def create(self, validated_data):
-        validated_data.pop('confirm_password', None)
-        try:
-            user = User.objects.create_user(
-                email=validated_data['email'],
-                first_name=validated_data['first_name'],
-                last_name=validated_data['last_name'],
-                password=validated_data['password'],
-                role='STUDENT'
-            )
-        except ValidationError as e:
-            # Handle TTU email validation error properly
-            raise serializers.ValidationError({"email": e.messages})
-        except Exception as e:
-            # Prevent internal server error from unexpected issues
-            raise serializers.ValidationError({"detail": str(e)})
-        return user
-
-
-class AdminCreationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    confirm_password = serializers.CharField(write_only=True)
-
-    class Meta:
-        model = User
-        fields = ['email', 'first_name', 'last_name', 'password', 'confirm_password', 'role']
-
-    def validate(self, attrs):
-        if attrs['password'] != attrs['confirm_password']:
-            raise serializers.ValidationError({"password": "Passwords do not match."})
-        if attrs['role'] != 'ADMIN':
-            raise serializers.ValidationError({"role": "Role must be 'ADMIN'."})
+        if not attrs['email'].endswith('@ttu.edu.gh'):
+            raise serializers.ValidationError({"email": "Students must register with a valid TTU email."})
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')
+
+        # Create user as inactive until verification
         user = User.objects.create_user(
             email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
+            full_name=validated_data['full_name'],
+            role='STUDENT',
             password=validated_data['password'],
-            role='ADMIN'
+            is_active=False
         )
+
+        # Send verification email
+        send_student_verification_email(
+            user_email=user.email,
+            full_name=user.full_name,
+            verification_token=str(user.verification_token)
+        )
+
+        return user
+
+
+class SuperAdminUserSerializer(serializers.ModelSerializer):
+    role = serializers.ChoiceField(choices=[('STUDENT', 'Student'), ('ADMIN', 'Admin')])
+
+    class Meta:
+        model = User
+        fields = ['full_name', 'email', 'role']
+
+    def create(self, validated_data):
+        role = validated_data.pop('role')
+        temp_password = generate_temporary_password()
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            full_name=validated_data['full_name'],
+            role=role,
+            password=temp_password
+        )
+        send_account_email(user.email, user.full_name, user.role, temp_password)
         return user
 
 
@@ -73,4 +79,19 @@ class LoginSerializer(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'role', 'is_active']
+        fields = ['id', 'full_name', 'email', 'role', 'is_active']
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        return attrs
