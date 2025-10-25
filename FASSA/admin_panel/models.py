@@ -3,8 +3,8 @@ from django.db import models
 class Course(models.Model):
     code = models.CharField(max_length=20, unique=True)
     title = models.CharField(max_length=255)
-    program = models.CharField(max_length=120, blank=True)    # e.g., BSc CS
-    level = models.CharField(max_length=20, blank=True)        # e.g., 100, 200
+    program = models.CharField(max_length=120, blank=True)
+    level = models.CharField(max_length=20, blank=True)
     semester = models.CharField(max_length=10, blank=True)
     lecturer = models.CharField(max_length=255, blank=True)
 
@@ -14,7 +14,7 @@ class Course(models.Model):
 
 class Timetable(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='timetables')
-    day_of_week = models.CharField(max_length=10)  # Monday, Tuesday...
+    day_of_week = models.CharField(max_length=10)
     start_time = models.TimeField()
     end_time = models.TimeField()
     venue = models.CharField(max_length=255, blank=True)
