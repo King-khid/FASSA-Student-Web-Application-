@@ -62,7 +62,6 @@ class SuperAdminUserView(generics.ListCreateAPIView):
             serializer.save()
             return
 
-        # Deny Students from creating any account
         else:
             raise PermissionDenied("You do not have permission to create accounts.")
 
@@ -113,7 +112,6 @@ class PasswordResetRequestView(generics.GenericAPIView):
         except User.DoesNotExist:
             return Response({"detail": "If this email exists, a reset link will be sent."}, status=status.HTTP_200_OK)
 
-        # create token
         reset_obj = PasswordReset.objects.create(user=user)
         send_password_reset_email(user.email, reset_obj.token)
 
