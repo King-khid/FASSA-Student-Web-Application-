@@ -13,7 +13,7 @@ class UserCreationForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('email', 'full_name', 'role')  # Use full_name instead of first_name/last_name
+        fields = ('email', 'full_name', 'role')
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1")
@@ -50,7 +50,7 @@ class UserAdmin(BaseUserAdmin):
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal info', {'fields': ('full_name',)}),  # replaced first_name/last_name
+        ('Personal info', {'fields': ('full_name',)}),
         ('Permissions', {
             'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')
         }),
@@ -64,5 +64,5 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
-    search_fields = ('email', 'full_name')  # replaced first_name/last_name
+    search_fields = ('email', 'full_name')
     ordering = ('email',)
