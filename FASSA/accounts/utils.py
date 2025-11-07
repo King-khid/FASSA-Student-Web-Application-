@@ -9,7 +9,6 @@ def generate_temporary_password(length=10):
     return ''.join(random.choice(chars) for _ in range(length))
 
 def send_account_email(user_email, full_name, role, temp_password):
-    """Send plain text email notifying user of account creation."""
     role_text = "Faculty Admin" if role == 'ADMIN' else "Student"
     subject = "Your FASSA Account Has Been Created"
     message = f"""
