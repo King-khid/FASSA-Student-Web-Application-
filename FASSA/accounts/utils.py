@@ -32,7 +32,6 @@ FASSA
 
 
 def send_student_verification_email(user_email, full_name, verification_token):
-    """Send email verification link to student after registration."""
     subject = "Verify Your FASSA Account"
     verification_link = f"http://127.0.0.1:8000/api/accounts/verify/{verification_token}/"
     message = f"""

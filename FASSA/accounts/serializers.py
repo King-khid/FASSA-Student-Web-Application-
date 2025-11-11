@@ -141,7 +141,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({"password": "Passwords do not match."})
         return attrs
 
-#Admin/super admin managing student account
+#Admin/super admin managing student
 class StudentManagementSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
